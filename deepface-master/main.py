@@ -19,7 +19,6 @@ def analyze_emotion(frame):
             emotion = result[0]["dominant_emotion"]
             region = result[0]["region"]
             x, y, w, h = region['x'], region['y'], region['w'], region['h']
-            #q.put((emotion, (x, y), (x + w, y + h)))
             return emotion, (x, y), (x + w, y + h)
     except Exception as e:
         print(f"Error processing frame: {str(e)}")
@@ -38,6 +37,31 @@ def update_emotion_score(emotion, emotion_score):
 # emotion_scores = {'total': 0}  
 # 初始化情绪分数字典，存储两个摄像头的分数
 emotion_scores = {'camera1': 0, 'camera2': 0}
+
+# 定义一个函数创建一个窗口包含两个视频流和一个按钮
+def create_window(frame1, frame2):
+    # 获取帧的尺寸
+    h1, w1 = frame1.shape[:2]
+    h2, w2 = frame2.shape[:2]
+    
+    # 拼接图像，使得frame1在上，frame2在下
+    combined_frame = np.zeros((max(h1, h2), w1 + w2, 3), dtype=np.uint8)
+    combined_frame[:h1, :w1, :] = cv2.resize(frame1, (w1, h1))
+    combined_frame[:h2, w1:w1+w2, :] = cv2.resize(frame2, (w2, h2))
+    
+    # 在窗口上创建按钮
+    cv2.namedWindow('Cameras Feed')
+    cv2.resizeWindow('Cameras Feed', 960, 720)  # 根据需要调整大小
+    cv2.imshow('Cameras Feed', combined_frame)
+    
+    # 定义按钮回调函数
+    def save_image():
+        cv2.imwrite('saved_image1.jpg', frame1)
+        cv2.imwrite('saved_image2.jpg', frame2)
+        print("Images saved.")
+
+    # 创建一个按钮并绑定回调函数
+    cv2.createButton('Save Image', save_image, 10, 10, 120, 30)
 
 
 # 将主程序代码块包裹起来，避免在导入模块时执行主程序代码
@@ -83,6 +107,7 @@ if __name__ == "__main__":
             emotion_scores['camera1'] = update_emotion_score(emotion1, {'total': emotion_scores['camera1']})['total']
             cv2.rectangle(frame1, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(frame1, emotion1, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            #cv2.putText(frame1, f"Score: {emotion_scores['camera1']}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             #emotion_scores = update_emotion_score(emotion1, emotion_scores)
 
         if emotion2:
@@ -92,6 +117,7 @@ if __name__ == "__main__":
             emotion_scores['camera2'] = update_emotion_score(emotion2, {'total': emotion_scores['camera2']})['total']
             cv2.rectangle(frame2, (x3, y3), (x4, y4), (0, 255, 0), 2)
             cv2.putText(frame2, emotion2, (x3, y3 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            #cv2.putText(frame2, f"Score: {emotion_scores['camera2']}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             #emotion_scores = update_emotion_score(emotion2, emotion_scores)
 
         # 显示图像
@@ -113,7 +139,6 @@ if __name__ == "__main__":
             emotion_score -= 0.5
         elif emotion2 in ['neutral']:
             pass
-        
         '''
     
         # 显示分数
