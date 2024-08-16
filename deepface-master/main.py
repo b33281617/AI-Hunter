@@ -1,5 +1,6 @@
 import cv2
 from deepface import DeepFace
+import numpy as np
 
 TF_ENABLE_ONEDNN_OPTS=0
 
@@ -24,11 +25,10 @@ def analyze_emotion(frame):
         print(f"Error processing frame: {str(e)}")
     return None, None, None #三个参数怎么样？
 
-
 # 定义情绪分数统计函数
 def update_emotion_score(emotion, emotion_score):
     if emotion in ['surprise', 'happy']:
-        emotion_score['total'] += 1
+        emotion_score['total'] += 10
     elif emotion in ['sad', 'angry', 'disgust', 'fear']:
         emotion_score['total'] -= 1  
     return emotion_score
@@ -40,20 +40,33 @@ emotion_scores = {'camera1': 0, 'camera2': 0}
 
 # 定义一个函数创建一个窗口包含两个视频流和一个按钮
 def create_window(frame1, frame2):
-    # 获取帧的尺寸
-    h1, w1 = frame1.shape[:2]
-    h2, w2 = frame2.shape[:2]
-    
-    # 拼接图像，使得frame1在上，frame2在下
-    combined_frame = np.zeros((max(h1, h2), w1 + w2, 3), dtype=np.uint8)
-    combined_frame[:h1, :w1, :] = cv2.resize(frame1, (w1, h1))
-    combined_frame[:h2, w1:w1+w2, :] = cv2.resize(frame2, (w2, h2))
-    
+    # 调整视频帧大小为相同大小
+    frame1 = cv2.resize(frame1, (640, 480))
+    frame2 = cv2.resize(frame2, (640, 480))
+
+    # 拼接两个视频帧
+    combined_frame = np.hstack((frame1, frame2))
+    cv2.imshow('Eyes of Howdy', combined_frame)
+
+   
+    # 创建窗口
+    #cv2.namedWindow('Eyes of Howdy')
+
+def save_image(frame1,frame2):
+    cv2.imwrite('saved_image1.jpg', frame1)
+    cv2.imwrite('saved_image2.jpg', frame2)
+    print("Images saved.")
+
+# 鼠标回调函数，用于按钮点击事件
+def handle_mouse(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONUP:
+        if 10 <= x <= 130 and 10 <= y <= 50:  # 假设按钮区域
+            save_image(param[0], param[1])      
+    '''
     # 在窗口上创建按钮
-    cv2.namedWindow('Cameras Feed')
-    cv2.resizeWindow('Cameras Feed', 960, 720)  # 根据需要调整大小
-    cv2.imshow('Cameras Feed', combined_frame)
-    
+    cv2.resizeWindow('Eyes of Howdy', 960, 720)  # 根据需要调整大小
+    cv2.imshow('Eyes of Howdy', combined_frame)
+
     # 定义按钮回调函数
     def save_image():
         cv2.imwrite('saved_image1.jpg', frame1)
@@ -61,8 +74,19 @@ def create_window(frame1, frame2):
         print("Images saved.")
 
     # 创建一个按钮并绑定回调函数
-    cv2.createButton('Save Image', save_image, 10, 10, 120, 30)
+    button = cv2.createButton('Save Image', save_image, 10, 10, 120)
 
+    # 显示图像和按钮
+    cv2.imshow('Eyes of Howdy', combined_frame)
+    cv2.setMouseCallback('Eyes of Howdy', handle_mouse)
+
+    # 鼠标回调函数，用于按钮点击事件
+    def handle_mouse(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONUP:  # 鼠标左键释放事件
+            if button.isPressed():
+                save_image()
+    '''
+    
 
 # 将主程序代码块包裹起来，避免在导入模块时执行主程序代码
 
@@ -85,6 +109,12 @@ if __name__ == "__main__":
 
     emodict = dict()
     frame_cnt = 0
+
+    # 创建窗口
+    ret1, frame1 = cap1.read()
+    ret2, frame2 = cap2.read()
+    create_window(frame1, frame2)
+
 
     while True:
         # 从摄像头读取一帧图像
@@ -121,9 +151,13 @@ if __name__ == "__main__":
             #emotion_scores = update_emotion_score(emotion2, emotion_scores)
 
         # 显示图像
+        '''
         cv2.imshow('Video 1', frame1)
         cv2.imshow('Video 2', frame2)
+        '''
 
+        # 显示两个视频流
+        create_window(frame1, frame2)
         '''
         # 根据情绪更新分数
         if emotion1 in ['surprise', 'happy']:
@@ -160,6 +194,8 @@ if __name__ == "__main__":
         frame_cnt += 1
         print(f"Processing frame {frame_cnt}")
 
+         # 设置鼠标回调
+        cv2.setMouseCallback('Eyes of Howdy', handle_mouse, param=[frame1, frame2])
 
         # 按 'q' 退出循环
         if cv2.waitKey(1) & 0xFF == ord('q'):
